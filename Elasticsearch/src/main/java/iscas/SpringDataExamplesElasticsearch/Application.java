@@ -1,0 +1,106 @@
+/*
+ * Copyright 2014-2016 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package iscas.SpringDataExamplesElasticsearch;
+
+import java.net.InetAddress;
+import java.util.Arrays;
+
+
+import org.elasticsearch.client.Client;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.core.geo.GeoPoint;
+import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
+
+/**
+ * @author Artur Konczak
+ * @author Oliver Gierke
+ * @author Christoph Strobl
+ */
+@SpringBootApplication
+@EnableElasticsearchRepositories
+class Application {
+
+	@Autowired
+	ElasticsearchOperations operations;
+	@Autowired
+	ConferenceRepository repository;
+
+	private static final Logger log = LoggerFactory.getLogger(Application.class);
+
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class);
+	}
+
+	@Bean
+	public CommandLineRunner demo() {
+		return (args) -> {
+			insertDataSample();
+//			deleteIndex();
+		};
+	}
+
+	@Bean
+	public Client client() {
+		TransportClient client = null;
+		try {
+			client = TransportClient.builder().build()
+					.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("124.16.136.144"), 9300));
+		} catch (Exception e) {
+			log.error(e.toString());
+		}
+		return client;
+	}
+
+	@Bean
+	public ElasticsearchTemplate elasticsearchTemplate(Client client) throws Exception {
+		return new ElasticsearchTemplate(client);
+	}
+
+	public void deleteIndex() {
+		operations.deleteIndex(Conference.class);
+	}
+
+	public void insertDataSample() {
+
+		// Remove all documents
+		repository.deleteAll();
+		operations.refresh(Conference.class);
+
+		// Save data sample
+		repository.save(Conference.builder().date("2014-11-06").name("Spring eXchange 2014 - London")
+				.keywords(Arrays.asList("java", "spring")).location(new GeoPoint(51.500152D, -0.126236D)).build());
+		repository.save(Conference.builder().date("2014-12-07").name("Scala eXchange 2014 - London")
+				.keywords(Arrays.asList("scala", "play", "java")).location(new GeoPoint(51.500152D, -0.126236D))
+				.build());
+		repository.save(Conference.builder().date("2014-11-20").name("Elasticsearch 2014 - Berlin")
+				.keywords(Arrays.asList("java", "elasticsearch", "kibana"))
+				.location(new GeoPoint(52.5234051D, 13.4113999)).build());
+		repository.save(Conference.builder().date("2014-11-12").name("AWS London 2014")
+				.keywords(Arrays.asList("cloud", "aws")).location(new GeoPoint(51.500152D, -0.126236D)).build());
+		repository.save(Conference.builder().date("2014-10-04").name("JDD14 - Cracow")
+				.keywords(Arrays.asList("java", "spring")).location(new GeoPoint(50.0646501D, 19.9449799)).build());
+	}
+}
